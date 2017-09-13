@@ -1,6 +1,7 @@
 #include "opencv2/objdetect.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
+#include "opencv2/opencv.hpp"
 
 #include <iostream>
 #include <stdio.h>
@@ -10,6 +11,7 @@ using namespace cv;
 
 /** Function Headers */
 void detectAndDisplay(Mat frame);
+bool detectIris(Mat eyeROI);
 
 /** Global variables */
 String faceCascadeName = "haarcascade_frontalface_alt.xml";
@@ -74,7 +76,7 @@ Detects facial features in a given frame and displays the result
 */
 void detectAndDisplay(Mat frame)
 {
-	std::vector<Rect> faces;
+	vector<Rect> faces;
 	Mat frame_gray;
 
 	//-- Convert frame to grayscale and increase contrast
@@ -92,7 +94,7 @@ void detectAndDisplay(Mat frame)
 
 		//-- In each face, detect eye pair
 		Mat faceROI = frame_gray(faces[i]);
-		std::vector<Rect> eyepairs;
+		vector<Rect> eyepairs;
 		int minEyepairSizeX = faces[0].width / 2;
 		int minEyepairSizeY = faces[0].height / 6;
 		int maxEyepairSizeX = faces[0].width;
@@ -106,22 +108,81 @@ void detectAndDisplay(Mat frame)
 		}
 
 		//-- In each face, detect eyes
-		std::vector<Rect> eyes;
+		vector<Rect> eyes;
 		int minEyeSizeX = faces[0].width / 5;
 		int minEyeSizeY = faces[0].height / 6;
 		int maxEyeSizeX = faces[0].width / 3;
 		int maxEyeSizeY = faces[0].height / 4;
 		eyesCascade.detectMultiScale(faceROI, eyes, 1.1, 4, 0 | CASCADE_SCALE_IMAGE, Size(minEyeSizeX, minEyeSizeY), Size(maxEyeSizeX, maxEyeSizeY));
-		//-- Draw circle around eye positions
+		//-- Draw box around eye positions
 		for (size_t j = 0; j < eyes.size(); j++)
 		{
-			Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2, faces[i].y + eyes[j].y + eyes[j].height / 2);
-			int radius = cvRound((eyes[j].width + eyes[j].height)*0.25);
-			circle(frame, eye_center, radius, Scalar(255, 0, 0), 4, 8, 0);
+			//-- Draw box around eye positions
+			rectangle(frame, faces[i].tl() + eyes[j].tl(), faces[i].tl() + eyes[j].br(), Scalar(255, 0, 0), 4, 8, 0);
+		
+			//-- Locate iris within eye
+			detectIris(faceROI(eyes[j]));
+			//imshow("eyeball",faceROI(eyes[j]));
 		}
 
 	}
 
 	//-- Show what you got
 	imshow(captureWindowName, frame);
+}
+
+bool detectIris(Mat eyeROI)
+{
+	// Read image
+	Mat eye = eyeROI;
+
+	// Thresholding
+	//threshold(eye, eye, 30, 225, cv::THRESH_BINARY);
+
+	// Remove isolated pixels
+	//medianBlur(eye, eye, 7);
+
+	// Rename eye mat
+	Mat im = eye;
+
+	// Setup SimpleBlobDetector parameters.
+	SimpleBlobDetector::Params params;
+
+	// Change thresholds
+	params.minThreshold = 0;
+	params.maxThreshold = 100;
+
+	// Filter by Area.
+	params.filterByArea = true;
+	params.minArea = im.cols * im.rows / 30;
+	params.maxArea = im.cols * im.rows / 5;
+
+	// Filter by Circularity
+	params.filterByCircularity = true;
+	params.minCircularity = 0.3f;
+
+	// Filter by Convexity
+	params.filterByConvexity = true;
+	params.minConvexity = 0.1f;
+
+	// Filter by Inertia
+	params.filterByInertia = true;
+	params.minInertiaRatio = 0.01f;
+
+	// Set up detector with params
+	Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+
+	// Detect blobs.
+	vector<KeyPoint> keypoints;
+	detector->detect(im, keypoints);
+
+	// Draw detected blobs as red circles.
+	// DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob
+	Mat im_with_keypoints;
+	drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+	// Show blobs
+	imshow("keypoints", im_with_keypoints);
+
+	return true;
 }
