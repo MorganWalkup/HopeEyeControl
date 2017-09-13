@@ -18,7 +18,7 @@ cv::String eyepairCascadeName = "haarcascade_mcs_eyepair_big.xml";
 cv::CascadeClassifier faceCascade;
 cv::CascadeClassifier eyesCascade;
 cv::CascadeClassifier eyepairCascade;
-cv::String testFilename = "MorganTest.mp4";
+cv::String testFilename = "KehindeTest.mp4";
 int usbWebcamIndex = 1;
 cv::String captureWindowName = "Capture - Face detection";
 
@@ -138,7 +138,12 @@ bool detectIris(cv::Mat eyeROI)
 	//cv::threshold(eye, eye, 25, 255, cv::THRESH_BINARY);
 
 	// Contrast and brightness adjustment
-	eye.convertTo(eye,-1,3.5,-0.3);
+	double contrast = 2.5;
+	double brightness = -0.3;
+	double morganContrast = 3.5;
+	double seanContrast = 2;
+	double kehindeContrast = 3.5;
+	eye.convertTo(eye,-1,contrast,brightness);
 
 	// Remove isolated pixels
 	cv::medianBlur(eye, eye, 7);
