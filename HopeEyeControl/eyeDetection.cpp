@@ -5,11 +5,13 @@
 
 #include <iostream>
 #include <stdio.h>
+#include <windows.h>
 
 
 /** Function Headers */
 void detectAndDisplay(cv::Mat frame);
-bool detectIris(cv::Mat eyeROI);
+bool detectIris(cv::Mat eyeROI, int lrFlag);
+void moveMouse(int x, int y);
 
 /** Global variables */
 cv::String faceCascadeName = "haarcascade_frontalface_alt.xml";
@@ -18,9 +20,13 @@ cv::String eyepairCascadeName = "haarcascade_mcs_eyepair_big.xml";
 cv::CascadeClassifier faceCascade;
 cv::CascadeClassifier eyesCascade;
 cv::CascadeClassifier eyepairCascade;
-cv::String testFilename = "KehindeTest.mp4";
+cv::String testFilename = "MorganTest.mp4";
 int usbWebcamIndex = 1;
 cv::String captureWindowName = "Capture - Face detection";
+double minEyePositionX = 0.2;
+double maxEyePositionX = 0.8;
+double minEyePositionY = 0.4;
+double maxEyePositionY = 0.6;
 
 /** @function main */
 int main(void)
@@ -65,6 +71,9 @@ int main(void)
 
 		int c = cv::waitKey(10);
 		if ((char)c == 27) { break; } // escape
+
+		std::cin.ignore();
+
 	}
 	return 0;
 }
@@ -119,8 +128,10 @@ void detectAndDisplay(cv::Mat frame)
 			rectangle(frame, faces[i].tl() + eyes[j].tl(), faces[i].tl() + eyes[j].br(), cv::Scalar(255, 0, 0), 4, 8, 0);
 		
 			//-- Locate iris within eye
-			detectIris(faceROI(eyes[j]));
-			//imshow("eyeball",faceROI(eyes[j]));
+			if (eyes[j].tl().x < (faces[i].width / 2)) //If on left side of image (right eye)
+				detectIris(faceROI(eyes[j]), 0); //Detect iris for right eye
+			else
+				detectIris(faceROI(eyes[j]), 1); //Detect iris for left eye
 		}
 
 	}
@@ -129,7 +140,12 @@ void detectAndDisplay(cv::Mat frame)
 	imshow(captureWindowName, frame);
 }
 
-bool detectIris(cv::Mat eyeROI)
+/** @@function detectIris
+Detects the iris within an eye and displays it in a new window 
+eyeROI: The matrix of the eye image
+lrFlag: Flag for the eye type. 0 for right, 1 for left
+*/
+bool detectIris(cv::Mat eyeROI, int lrFlag)
 {
 	// Read image
 	cv::Mat eye = eyeROI;
@@ -157,8 +173,8 @@ bool detectIris(cv::Mat eyeROI)
 
 	// Filter by Area.
 	params.filterByArea = true;
-	params.minArea = eye.cols * eye.rows / 30;
-	params.maxArea = eye.cols * eye.rows / 4;
+	params.minArea = eye.cols * eye.rows / 30.0f;
+	params.maxArea = eye.cols * eye.rows / 4.0f;
 
 	// Filter by Circularity
 	params.filterByCircularity = true;
@@ -182,7 +198,16 @@ bool detectIris(cv::Mat eyeROI)
 	// Get the most central keypoint
 	int numKeypoints = static_cast<int>(keypoints.size());
 
-	if (numKeypoints > 1)
+	if (numKeypoints == 0)
+	{
+		if (lrFlag == 0)
+			imshow("Right Keypoints", eye);
+		else if (lrFlag == 1)
+			imshow("Left Keypoints", eye);
+
+		return false;
+	}
+	else if (numKeypoints > 1)
 	{
 		int eyeMidpointX = eye.cols / 2;
 		int eyeMidpointY = eye.rows / 2;
@@ -213,7 +238,66 @@ bool detectIris(cv::Mat eyeROI)
 	drawKeypoints(eye, keypoints, eye_with_keypoints, cv::Scalar(0, 0, 255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 
 	// Show blobs
-	imshow("keypoints", eye_with_keypoints);
+	if (lrFlag == 0) {
+		imshow("Right Keypoints", eye_with_keypoints);
+	}
+	else if (lrFlag == 1) {
+		imshow("Left Keypoints", eye_with_keypoints);
+
+		// Move mouse to blob position for left eye
+		int blobX = keypoints.at(0).pt.x;
+		int blobY = keypoints.at(0).pt.y;
+		int eyeWidth = eye.cols;
+		int eyeHeight = eye.rows;
+
+		double localEyePositionX = ((double)blobX) / eyeWidth;
+		double localEyePositionY = ((double)blobY) / eyeHeight;
+
+		/*if (localEyePositionX > maxEyePositionX)
+		maxEyePositionX = localEyePositionX;
+		if (localEyePositionX < minEyePositionX)
+		minEyePositionX = localEyePositionX;
+		if (localEyePositionY > maxEyePositionY)
+		maxEyePositionY = localEyePositionY;
+		if (localEyePositionY < minEyePositionY)
+		minEyePositionY = localEyePositionY;*/
+
+		double adjustedEyePositionX = localEyePositionX;
+		double adjustedEyePositionY = localEyePositionY;
+
+		int minEyeCoordX = minEyePositionX*eyeWidth;
+		int maxEyeCoordX = maxEyePositionX*eyeWidth;
+		int minEyeCoordY = minEyePositionY*eyeHeight;
+		int maxEyeCoordY = maxEyePositionY*eyeHeight;
+
+		if (maxEyeCoordX > minEyeCoordX)
+			adjustedEyePositionX = ((double)blobX - minEyeCoordX) / (maxEyeCoordX - minEyeCoordX);
+
+		if (maxEyeCoordY > minEyeCoordY)
+			adjustedEyePositionY = ((double)blobY - minEyeCoordY) / (maxEyeCoordY - minEyeCoordY);
+
+		double screenWidth = ::GetSystemMetrics(SM_CXSCREEN) - 1;
+		double screenHeight = ::GetSystemMetrics(SM_CYSCREEN) - 1;
+		printf("eyes (%f,%f)\n", screenWidth*adjustedEyePositionX, screenHeight*adjustedEyePositionY);
+		moveMouse(screenWidth * adjustedEyePositionX, screenHeight * adjustedEyePositionY);
+	}
 
 	return true;
+}
+
+/* @@MouseMove
+Moves the mouse to the given screen coordinates
+*/
+void moveMouse(int x, int y)
+{
+	double fScreenWidth = ::GetSystemMetrics(SM_CXSCREEN) - 1;
+	double fScreenHeight = ::GetSystemMetrics(SM_CYSCREEN) - 1;
+	double fx = x*(65535.0f / fScreenWidth);
+	double fy = y*(65535.0f / fScreenHeight);
+	INPUT  Input = { 0 };
+	Input.type = INPUT_MOUSE;
+	Input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+	Input.mi.dx = fx;
+	Input.mi.dy = fy;
+	::SendInput(1, &Input, sizeof(INPUT));
 }
