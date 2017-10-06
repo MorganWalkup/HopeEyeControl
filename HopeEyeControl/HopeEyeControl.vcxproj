@@ -84,9 +84,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Users\BUKS05\Desktop\Systems Design\Systems II\Hope Electronics\Opencv\opencv\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\BUKS05\Desktop\Systems Design\Systems II\Hope Electronics\Opencv\opencv\build\x64\vc14\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -118,7 +121,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="eyeDetection.cpp" />
+    <ClCompile Include="BlobDetection.cpp" />
+    <ClCompile Include="BlobDetection2.cpp" />
+    <ClCompile Include="BlobDetection3.cpp" />
+    <ClCompile Include="eyeLocalization.cpp" />
+    <ClCompile Include="EyeLocalization2.cpp" />
+    <ClCompile Include="eyeLocalization3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
