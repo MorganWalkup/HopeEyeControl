@@ -279,7 +279,7 @@ bool detectIris(cv::Mat eyeROI, int lrFlag)
 		double screenWidth = ::GetSystemMetrics(SM_CXSCREEN) - 1;
 		double screenHeight = ::GetSystemMetrics(SM_CYSCREEN) - 1;
 		printf("eyes (%f,%f)\n", screenWidth*adjustedEyePositionX, screenHeight*adjustedEyePositionY);
-		moveMouse(screenWidth * adjustedEyePositionX, screenHeight * adjustedEyePositionY);
+		//moveMouse(screenWidth * adjustedEyePositionX, screenHeight * adjustedEyePositionY);
 	}
 
 	return true;
